@@ -26,8 +26,8 @@ export default function NewTradePage() {
               <CardTitle>Trade Details</CardTitle>
               <CardDescription>Enter the basic information about your trade entry.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <CardContent className="space-y-5">
+              <div className="grid grid-cols-2 gap-5">
                 <div className="space-y-2">
                   <Label htmlFor="pair">Trading Pair</Label>
                   <Input id="pair" placeholder="e.g. BTC/USDT" />
@@ -39,10 +39,10 @@ export default function NewTradePage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="side">Side</Label>
+                  <Label htmlFor="side">Entry Type</Label>
                   <Select>
-                    <SelectTrigger id="side">
-                      <SelectValue placeholder="Select side" />
+                    <SelectTrigger id="side" className="w-full">
+                      <SelectValue placeholder="Select Entry Type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="long">Long</SelectItem>
@@ -53,7 +53,7 @@ export default function NewTradePage() {
                 <div className="space-y-2">
                   <Label htmlFor="strategy">Strategy</Label>
                   <Select>
-                    <SelectTrigger id="strategy">
+                    <SelectTrigger id="strategy" className="w-full">
                       <SelectValue placeholder="Select strategy" />
                     </SelectTrigger>
                     <SelectContent>
@@ -66,8 +66,12 @@ export default function NewTradePage() {
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
+                  <Label htmlFor="entry">Lot Size</Label>
+                  <Input id="lot_size" type="number" placeholder="0.00" />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="entry">Entry Price</Label>
-                  <Input id="entry" type="number" placeholder="0.00" />
+                  <Input id="entry_price" type="number" placeholder="0.00" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="stop-loss">Stop Loss</Label>
@@ -76,6 +80,19 @@ export default function NewTradePage() {
                 <div className="space-y-2">
                   <Label htmlFor="take-profit">Take Profit</Label>
                   <Input id="take-profit" type="number" placeholder="0.00" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="strategy">Strategy</Label>
+                  <Select>
+                    <SelectTrigger id="session" className="w-full">
+                      <SelectValue placeholder="Select Session" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="breakout">Asian</SelectItem>
+                      <SelectItem value="mean-reversion">London</SelectItem>
+                      <SelectItem value="trend-following">New York</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>

@@ -11,10 +11,13 @@ import {
   Settings,
   Sun,
   Target,
-  TrendingUp,
+  DollarSign,
+  LogOut,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
+import {authService} from '@/lib/auth'
+import { useRouter } from "next/navigation"
 
 import {
   Sidebar,
@@ -26,6 +29,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { Button } from "./ui/button"
 
 const navItems = [
   { title: "Dashboard", href: "/dashboards/dashboard", icon: LayoutDashboard },
@@ -37,6 +41,7 @@ const navItems = [
 
 export function DashboardSidebar() {
   const pathname = usePathname()
+  const route = useRouter()
   const { setTheme, resolvedTheme } = useTheme()
 
   const [mounted, setMounted] = useState(false)
@@ -51,15 +56,15 @@ export function DashboardSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <TrendingUp className="size-4" />
+              <Link href="/dashboards/dashboards">
+                <div className="flex aspect-square size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <DollarSign className="size-6" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold text-balance">
+                  <span className="truncate font-semibold text-xl">
                     Trading Journal
                   </span>
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="truncate text-sm text-muted-foreground">
                     Professional Edition
                   </span>
                 </div>
@@ -69,7 +74,7 @@ export function DashboardSidebar() {
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="px-4">
         <SidebarMenu>
           {navItems.map((item) => (
             <SidebarMenuItem key={item.href}>
@@ -77,10 +82,11 @@ export function DashboardSidebar() {
                 asChild
                 isActive={pathname === item.href}
                 tooltip={item.title}
+                className="py-5"
               >
                 <Link href={item.href}>
                   <item.icon className="size-4" />
-                  <span>{item.title}</span>
+                  <span className="text-md">{item.title}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -133,6 +139,16 @@ export function DashboardSidebar() {
                 <Settings className="size-4" />
                 <span>Settings</span>
               </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+            onClick={() => authService.logout()}
+              tooltip="Logout"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+            >
+              <LogOut className="size-4" />
+              <span>Logout</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

@@ -77,9 +77,9 @@ export default function TradesPage() {
           <h1 className="text-4xl font-bold tracking-tight text-balance">Trade History</h1>
           <p className="text-muted-foreground text-pretty text-lg">Review and analyze your complete trading record.</p>
         </div>
-        <Button asChild className="neon-glow">
+        <Button asChild className="neon-glow p-6">
           <Link href="/dashboards/trades/new">
-            <PlusCircle className="mr-2 h-4 w-4" />
+            <PlusCircle className="mr-1 h-12 w-12" />
             Log New Trade
           </Link>
         </Button>

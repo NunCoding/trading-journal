@@ -1,15 +1,18 @@
 "use client"
 
+import { use } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, Edit, Target, TrendingUp, Zap, Activity, ArrowUpRight, ArrowDownRight } from "lucide-react"
+import { ArrowLeft, Edit, Target, TrendingUp, Zap, Activity, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Bar, BarChart } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { useStrategy } from "@/hooks/use-strategies"
 
+// Mock data for charts (will be replaced with real data later)
 const performanceData = [
   { date: "2023-01", equity: 10000 },
   { date: "2023-02", equity: 10500 },
@@ -35,21 +38,81 @@ const recentTrades = [
   { id: 4, date: "2024-01-10", pair: "BTC/USD", side: "Long", pnl: 320, rr: 2.1, status: "win" },
 ]
 
-export default function StrategyDetailsPage({ params }: { params: { id: string } }) {
+const getStatusColor = (status: string | undefined | null) => {
+  if (!status) return "";
+  switch (status) {
+    case 'active':
+      return "bg-success/20 text-success border-success/30";
+    case 'testing':
+      return "bg-warning/20 text-warning border-warning/30";
+    case 'paused':
+      return "bg-muted/20 text-muted-foreground border-muted/30";
+    default:
+      return "";
+  }
+};
+
+export default function StrategyDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params)
+  const { strategy, loading, error } = useStrategy(resolvedParams.id)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+          <p className="text-muted-foreground">Loading strategy details...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !strategy) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <Target className="h-12 w-12 text-muted-foreground mx-auto" />
+          <h3 className="text-lg font-semibold">Strategy not found</h3>
+          <p className="text-muted-foreground">{error || "The strategy you're looking for doesn't exist."}</p>
+          <Button asChild>
+            <Link href="/dashboards/strategies">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Strategies
+            </Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const strategyName = strategy.name || 'Unnamed Strategy'
+  const strategyDescription = strategy.description || 'No description'
+  const strategyStatus = strategy.status || 'unknown'
+  const timeframes = strategy.timeframes || []
+  const symbols = strategy.symbols || []
+  const riskPerTrade = parseFloat(strategy.risk_per_trade) || 0
+  const minRR = parseFloat(strategy.min_rr_ratio) || 0
+  const maxRR = parseFloat(strategy.max_rr_ratio) || 0
+  const entryRules = strategy.entry_rules || 'No entry rules defined'
+  const exitRules = strategy.exit_rules || 'No exit rules defined'
+  const tradesCount = strategy.trades_count || 0
+
   return (
     <div className="space-y-6 pb-10">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild className="hover:bg-white/5">
-          <Link href="/strategies">
+          <Link href="/dashboards/strategies">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight">BTC Breakout</h1>
-            <Badge className="bg-success/20 text-success border-success/30">Active</Badge>
+            <h1 className="text-3xl font-bold tracking-tight">{strategyName}</h1>
+            <Badge className={getStatusColor(strategyStatus)}>
+              {strategyStatus.charAt(0).toUpperCase() + strategyStatus.slice(1)}
+            </Badge>
           </div>
-          <p className="text-muted-foreground">Bitcoin 4H high-volume breakout methodology.</p>
+          <p className="text-muted-foreground">{strategyDescription}</p>
         </div>
         <Button variant="outline" className="glass-card bg-transparent border-white/10 hover:border-primary/50">
           <Edit className="mr-2 h-4 w-4" />
@@ -59,10 +122,10 @@ export default function StrategyDetailsPage({ params }: { params: { id: string }
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Win Rate", value: "68%", sub: "+2.4% vs last mo", icon: Target, color: "text-primary" },
-          { label: "Total Profit", value: "+$4,200", sub: "8.4R accumulated", icon: TrendingUp, color: "text-success" },
-          { label: "Avg R:R", value: "2.4", sub: "Targets: 1.5 - 4.0", icon: Activity, color: "text-blue-400" },
-          { label: "Max Drawdown", value: "4.2%", sub: "Last hit: Oct 12", icon: Zap, color: "text-destructive" },
+          { label: "Total Trades", value: tradesCount.toString(), sub: "All time", icon: Target, color: "text-primary" },
+          { label: "Win Rate", value: strategy.win_rate ? `${strategy.win_rate}%` : "N/A", sub: "Based on closed trades", icon: TrendingUp, color: "text-success" },
+          { label: "Risk/Trade", value: `${riskPerTrade}%`, sub: `R:R Target: ${minRR} - ${maxRR}`, icon: Activity, color: "text-blue-400" },
+          { label: "Status", value: strategyStatus.charAt(0).toUpperCase() + strategyStatus.slice(1), sub: strategy.is_active ? "Currently active" : "Inactive", icon: Zap, color: strategy.is_active ? "text-success" : "text-muted-foreground" },
         ].map((stat, i) => (
           <Card key={i} className="glass-card border-white/10 hover:border-primary/30 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -102,29 +165,10 @@ export default function StrategyDetailsPage({ params }: { params: { id: string }
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={performanceData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                      <XAxis
-                        dataKey="date"
-                        stroke="rgba(255,255,255,0.4)"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        stroke="rgba(255,255,255,0.4)"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(v) => `$${v}`}
-                      />
+                      <XAxis dataKey="date" stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}`} />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Line
-                        type="monotone"
-                        dataKey="equity"
-                        stroke="var(--color-equity)"
-                        strokeWidth={3}
-                        dot={{ r: 4, fill: "var(--color-equity)", strokeWidth: 0 }}
-                        activeDot={{ r: 6, strokeWidth: 0 }}
-                      />
+                      <Line type="monotone" dataKey="equity" stroke="var(--color-equity)" strokeWidth={3} dot={{ r: 4, fill: "var(--color-equity)", strokeWidth: 0 }} activeDot={{ r: 6, strokeWidth: 0 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </ChartContainer>
@@ -137,34 +181,32 @@ export default function StrategyDetailsPage({ params }: { params: { id: string }
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Timeframe</h4>
-                  <div className="flex gap-2">
-                    <Badge variant="outline" className="bg-white/5 border-white/10">
-                      4H
-                    </Badge>
-                    <Badge variant="outline" className="bg-white/5 border-white/10">
-                      1D
-                    </Badge>
+                  <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Timeframes</h4>
+                  <div className="flex gap-2 flex-wrap">
+                    {timeframes.length > 0 ? timeframes.map((tf, index) => (
+                      <Badge key={index} variant="outline" className="bg-white/5 border-white/10">{tf}</Badge>
+                    )) : <span className="text-sm text-muted-foreground">Not specified</span>}
                   </div>
                 </div>
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Assets</h4>
-                  <div className="flex gap-2">
-                    <Badge variant="outline" className="bg-white/5 border-white/10">
-                      BTC
-                    </Badge>
-                    <Badge variant="outline" className="bg-white/5 border-white/10">
-                      ETH
-                    </Badge>
+                  <div className="flex gap-2 flex-wrap">
+                    {symbols.length > 0 ? symbols.map((symbol, index) => (
+                      <Badge key={index} variant="outline" className="bg-white/5 border-white/10">{symbol}</Badge>
+                    )) : <span className="text-sm text-muted-foreground">Not specified</span>}
                   </div>
                 </div>
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Risk per Trade</h4>
-                  <p className="text-sm font-semibold">1.0% (Hard Limit)</p>
+                  <p className="text-sm font-semibold">{riskPerTrade}% (Hard Limit)</p>
                 </div>
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Target R:R</h4>
-                  <p className="text-sm font-semibold">2.0 - 5.0</p>
+                  <p className="text-sm font-semibold">{minRR} - {maxRR}</p>
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Created</h4>
+                  <p className="text-sm font-semibold">{strategy.created_at ? new Date(strategy.created_at).toLocaleDateString() : 'N/A'}</p>
                 </div>
               </CardContent>
             </Card>
@@ -175,47 +217,45 @@ export default function StrategyDetailsPage({ params }: { params: { id: string }
           <Card className="glass-card border-white/10">
             <CardHeader>
               <CardTitle>Recent Trades</CardTitle>
-              <CardDescription>Latest trades executed using this strategy.</CardDescription>
+              <CardDescription>Latest trades executed using this strategy. ({tradesCount} total)</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent border-white/5">
-                    <TableHead className="text-muted-foreground uppercase text-xs">Date</TableHead>
-                    <TableHead className="text-muted-foreground uppercase text-xs">Pair</TableHead>
-                    <TableHead className="text-muted-foreground uppercase text-xs">Side</TableHead>
-                    <TableHead className="text-muted-foreground uppercase text-xs text-right">P&L</TableHead>
-                    <TableHead className="text-muted-foreground uppercase text-xs text-right">R:R</TableHead>
-                    <TableHead className="text-muted-foreground uppercase text-xs text-right">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentTrades.map((trade) => (
-                    <TableRow key={trade.id} className="border-white/5 hover:bg-white/5">
-                      <TableCell className="font-mono text-sm">{trade.date}</TableCell>
-                      <TableCell className="font-semibold">{trade.pair}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="bg-white/5 border-white/10">
-                          {trade.side}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        <span className={trade.pnl > 0 ? "text-success" : "text-destructive"}>
-                          {trade.pnl > 0 ? "+" : ""}${trade.pnl}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right font-mono">{trade.rr.toFixed(1)}R</TableCell>
-                      <TableCell className="text-right">
-                        {trade.status === "win" ? (
-                          <ArrowUpRight className="h-4 w-4 text-success ml-auto" />
-                        ) : (
-                          <ArrowDownRight className="h-4 w-4 text-destructive ml-auto" />
-                        )}
-                      </TableCell>
+              {tradesCount > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-white/5">
+                      <TableHead className="text-muted-foreground uppercase text-xs">Date</TableHead>
+                      <TableHead className="text-muted-foreground uppercase text-xs">Pair</TableHead>
+                      <TableHead className="text-muted-foreground uppercase text-xs">Side</TableHead>
+                      <TableHead className="text-muted-foreground uppercase text-xs text-right">P&L</TableHead>
+                      <TableHead className="text-muted-foreground uppercase text-xs text-right">R:R</TableHead>
+                      <TableHead className="text-muted-foreground uppercase text-xs text-right">Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {recentTrades.map((trade) => (
+                      <TableRow key={trade.id} className="border-white/5 hover:bg-white/5">
+                        <TableCell className="font-mono text-sm">{trade.date}</TableCell>
+                        <TableCell className="font-semibold">{trade.pair}</TableCell>
+                        <TableCell><Badge variant="outline" className="bg-white/5 border-white/10">{trade.side}</Badge></TableCell>
+                        <TableCell className="text-right font-semibold">
+                          <span className={trade.pnl > 0 ? "text-success" : "text-destructive"}>{trade.pnl > 0 ? "+" : ""}${trade.pnl}</span>
+                        </TableCell>
+                        <TableCell className="text-right font-mono">{trade.rr.toFixed(1)}R</TableCell>
+                        <TableCell className="text-right">
+                          {trade.status === "win" ? <ArrowUpRight className="h-4 w-4 text-success ml-auto" /> : <ArrowDownRight className="h-4 w-4 text-destructive ml-auto" />}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8">
+                  <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No trades yet</h3>
+                  <p className="text-muted-foreground">Start trading with this strategy to see your trade history here.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -227,24 +267,9 @@ export default function StrategyDetailsPage({ params }: { params: { id: string }
                 <CardTitle>Entry Rules</CardTitle>
                 <CardDescription>Conditions required for opening a position.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-primary">1. Volume Confirmation</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Volume must be 1.5x above 20-period average on breakout candle.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-primary">2. Price Action</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Clean breakout above resistance with strong bullish candle close.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-primary">3. Market Structure</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Higher timeframe must be trending in the same direction.
-                  </p>
+              <CardContent>
+                <div className="prose prose-sm prose-invert max-w-none">
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{entryRules}</p>
                 </div>
               </CardContent>
             </Card>
@@ -253,24 +278,9 @@ export default function StrategyDetailsPage({ params }: { params: { id: string }
                 <CardTitle>Exit Rules</CardTitle>
                 <CardDescription>Risk management and profit-taking strategy.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-destructive">Stop Loss</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Place below the breakout level or recent swing low, maximum 1% account risk.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-success">Take Profit</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Scale out: 50% at 2R, 30% at 3R, trail remaining 20% with 4H ATR stop.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-warning">Break-even</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Move stop to entry once price reaches 1.5R to protect capital.
-                  </p>
+              <CardContent>
+                <div className="prose prose-sm prose-invert max-w-none">
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{exitRules}</p>
                 </div>
               </CardContent>
             </Card>
@@ -284,39 +294,14 @@ export default function StrategyDetailsPage({ params }: { params: { id: string }
               <CardDescription>Month-over-month performance breakdown.</CardDescription>
             </CardHeader>
             <CardContent className="h-[350px]">
-              <ChartContainer
-                config={{
-                  returns: {
-                    label: "Returns",
-                    color: "hsl(var(--primary))",
-                  },
-                }}
-                className="h-full w-full"
-              >
+              <ChartContainer config={{ returns: { label: "Returns", color: "hsl(var(--primary))" } }} className="h-full w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={monthlyReturns}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                    <XAxis
-                      dataKey="month"
-                      stroke="rgba(255,255,255,0.4)"
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <YAxis
-                      stroke="rgba(255,255,255,0.4)"
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(v) => `${v}%`}
-                    />
+                    <XAxis dataKey="month" stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar
-                      dataKey="returns"
-                      fill="var(--color-returns)"
-                      radius={[4, 4, 0, 0]}
-                      className="cursor-pointer"
-                    />
+                    <Bar dataKey="returns" fill="var(--color-returns)" radius={[4, 4, 0, 0]} className="cursor-pointer" />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
